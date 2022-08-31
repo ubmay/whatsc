@@ -1,6 +1,7 @@
 #ifndef __MINIAES128_H__
 #define __MINIAES128_H__
 #include <stdlib.h>
+#include <string.h>
 typedef struct {
     unsigned char a, b, c, d;
 } row_t;
@@ -429,10 +430,10 @@ blockex_t AES128Decrypt(blockex_t state, blockex_t key) {
 }
 #endif /* __MINIAES128_H__ */
 
-#ifdef __MINIAES128_CBCEXT_H__
-#define __MINIAES128_CBCEXT_H__
 
-blockex_t AES128Encrypt(blockex_t state, blockex_t key, blockex_t cbcvec) {
+#ifndef __MINIAES128_CBCEXT_H__
+#define __MINIAES128_CBCEXT_H__
+blockex_t AES128EncryptCBC(blockex_t state, blockex_t key, blockex_t cbcvec) {
     blockex_t* roundKeys = 0;
     GenerateRoundKeys(key, &roundKeys, 10);
 
@@ -441,7 +442,7 @@ blockex_t AES128Encrypt(blockex_t state, blockex_t key, blockex_t cbcvec) {
 	
 	// CBC Encryption
 	// (note that AddBlockEx is actually an XOR operation)
-	output = AddBlockEx(output, cbcvec)
+	output = AddBlockEx(output, cbcvec);
 
     // 9 main rounds
     for (int i = 0; i < 9; i++) {
@@ -459,7 +460,7 @@ blockex_t AES128Encrypt(blockex_t state, blockex_t key, blockex_t cbcvec) {
     return output;
 }
 
-blockex_t AES128CBCDecrypt(blockex_t state, blockex_t key, blockex_t cbcvec) {
+blockex_t AES128CBCDecryptCBC(blockex_t state, blockex_t key, blockex_t cbcvec) {
     blockex_t* roundKeys = 0;
     GenerateRoundKeys(key, &roundKeys, 10);
 
@@ -481,9 +482,8 @@ blockex_t AES128CBCDecrypt(blockex_t state, blockex_t key, blockex_t cbcvec) {
 
 	// CBC Decryption
 	// (note that AddBlockEx is actually an XOR operation)
-	output = AddBlockEx(output, cbcvec)
+	output = AddBlockEx(output, cbcvec);
 
     return output;
 }
-
-#endif /* __MINIAES128_CBCEXT_H */
+#endif /* __MINIAES128_CBCEXT_H__ */
