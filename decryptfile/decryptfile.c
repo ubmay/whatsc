@@ -147,6 +147,7 @@ int main() {
 			prevstate = state;
 		}
 	}
+	free(roundKeys);
 	
 	printf("decryptfile: info: Decrypted data, writing to out file\n");
 	FILE* outfile = fopen(outFileName, "wb");
