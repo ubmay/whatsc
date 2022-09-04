@@ -11,7 +11,7 @@
 
 
 // Creates a HMAC hash digest for SHA256.
-sha256_t HMAC_sha256(void* _K, void* _m, uint32_t keylen, uint32_t msglen) {
+sha256_t HMAC_sha256(const void* _K, const void* _m, uint32_t keylen, uint32_t msglen) {
 	// HMAC(K, m) = H((K' ^ opad) || H((K' ^ ipad) || m))
 	// H is the hash function
 	// m is the message

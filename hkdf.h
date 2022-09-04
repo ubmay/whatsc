@@ -8,7 +8,7 @@
 #include "sha256.h"
 #include "hmac.h"
 
-void HKDF_sha256(void* out, uint32_t length, void* _ikm, void* _salt, void* _info, uint32_t ikmlen, uint32_t saltlen, uint32_t infolen) {
+void HKDF_sha256(void* out, uint32_t length, const void* _ikm, const void* _salt, const void* _info, uint32_t ikmlen, uint32_t saltlen, uint32_t infolen) {
 	uint32_t L = 32;
 
 	uint8_t* ikm = (uint8_t*)_ikm;
@@ -20,7 +20,7 @@ void HKDF_sha256(void* out, uint32_t length, void* _ikm, void* _salt, void* _inf
 	} else {
 		salt = (uint8_t*)malloc(L);
 		saltlen = L;
-		memcpy(salt, 0, L);
+		memset(salt, 0, L);
 		saltneedsfree = 1;
 	}
 	
@@ -48,7 +48,6 @@ void HKDF_sha256(void* out, uint32_t length, void* _ikm, void* _salt, void* _inf
 		t = HMAC_sha256(&prk, tempmsg, L, tempmsglen);
 		memcpy(okm + i * L, &t, L);
 	}
-	printf("%d\n", count);
 
 
 	memcpy(out, okm, length);

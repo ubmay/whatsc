@@ -122,7 +122,7 @@ static inline char sha256le(sha256_t a, sha256_t b) {
 
 // Hashes `_msg' of length `bytelen'.
 // Not very safe, prone to out of bounds accesses.
-sha256_t sha256(void *_msg, uint64_t bytelen) {
+sha256_t sha256(const void *_msg, uint64_t bytelen) {
 	uint32_t
 		h0 = 0x6a09e667,
 		h1 = 0xbb67ae85,
