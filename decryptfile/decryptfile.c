@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <ctype.h>
 
 #include "../miniaes.h"
 #include "../sha256.h"
@@ -22,17 +25,114 @@ const char E2EMediaInfoDocument[] = "WhatsApp Document Keys";
 const char E2EMediaInfoAudio[] = "WhatsApp Audio Keys";
 const char E2EMediaInfoSticker[] = "WhatsApp Image Keys";
 
+unsigned int mreadline(char* buf, unsigned int maxcount) {
+	char r = 0;
+	unsigned int t = 0;
+	ssize_t c = read(0, &r, 1);
+	while (r != '\n' && t < maxcount - 1) {
+		if (c != 1) break;
+		buf[t++] = r;
+		c = read(0, &r, 1);
+	}
+	buf[t] = 0;
+	return t;
+}
+
+unsigned int mreadline_handleesc(char* buf, unsigned int maxcount) {
+	char r = 0;
+	unsigned int t = 0;
+	ssize_t c = read(0, &r, 1);
+	if (c) while (r != '\n' && t < maxcount - 1) {
+		if (c != 1) break;
+		if (r == '\\') {
+			c = read(0, &r, 1);
+			if (!c) {
+				buf[t++] = r;
+				break;
+			}
+
+			if (r == ' ' || r == '\\' || r == '"' || r == '\'' || r == '?') buf[t++] = r;
+			else if (r == 'r') buf[t++] = '\r';
+			else if (r == 't') buf[t++] = '\t';
+			else if (r == 'v') buf[t++] = '\v';
+			else if (r == 'n') buf[t++] = '\n';
+			else if (r == '0') buf[t++] = '\0';
+			else if (r == 'f') buf[t++] = '\f';
+			else if (r == 'x') {
+				char r0 = 0, r1 = 0;
+				c = read(0, &r0, 1);
+				if (!c) {
+					buf[t++] = '\'';
+					buf[t++] = 'x';
+					break;
+				}
+
+				c = read(0, &r1, 1);
+				if (!c) {
+					buf[t++] = '\'';
+					buf[t++] = 'x';
+					buf[t++] = r0;
+					break;
+				}
+
+				if (r0 >= 'a' && r0 <= 'f') r0 -= 'a' - '9' - 1;
+				if (r1 >= 'a' && r1 <= 'f') r1 -= 'a' - '9' - 1;
+				r0 -= '0';
+				r1 -= '0';
+				r = r0 * 16 + r1;
+				buf[t++] = r;
+			}
+			c = read(0, &r, 1);
+		} else {
+			buf[t++] = r;
+			c = read(0, &r, 1);
+		}
+	}
+	buf[t] = 0;
+	return t;
+}
+
+void trimright(char* str) {
+	int a = strlen(str);
+	while (isspace(str[a - 1]) && a) str[a--] = 0;
+}
+
+void trimleft(char* str) {
+	int a = 0;
+	int l = strlen(str);
+	while (isspace(str[a]) && l) {
+		str[a++] = 0;
+		l--;
+	}
+	memcpy(str, str + a, l);
+	memset(str + l, 0, a);
+}
+
 int main() {
-	
 	char inFileName[1024] = {}, mediaKeyInput[1024] = {}, outFileName[1024] = {}, typeInput[16] = {};
 	printf("Enter input file: ");
-	scanf("%1023s", inFileName);
+	fflush(stdout);
+	mreadline_handleesc(inFileName, 1024);
+	trimright(inFileName);
+	trimleft(inFileName);
+	fflush(stdin);
+
 	printf("Enter media key: ");
-	scanf("%1023s", mediaKeyInput);
+	fflush(stdout);
+	mreadline(mediaKeyInput, 1024);
+	fflush(stdin);
+
 	printf("Enter output file: ");
-	scanf("%1023s", outFileName);
+	fflush(stdout);
+	mreadline_handleesc(outFileName, 1024);
+	trimright(inFileName);
+	trimleft(inFileName);
+	fflush(stdin);
+
 	printf("Enter video/document/image/sticker/audio: ");
-	scanf("%15s", typeInput);
+	fflush(stdout);
+	mreadline(typeInput, 1024);
+	fflush(stdin);
 
 	enum E2EMediaType type = E2EMediaTypeInvalid;
 	if (!strcmp(typeInput, "video")) type = E2EMediaTypeVideo;
@@ -64,9 +164,14 @@ int main() {
 				car2 -= '0';
 				char o = car1 * 16 + car2;
 				mediaKey[i] = o;
-			} else if (car0 == '\\') {
-				mediaKey[i] = '\\';
-			} else {
+			} else if (car0 == '\\' || car0 == '"' || car0 == '\"' || car0 == '?') mediaKey[i] = car0;
+			else if (car0 == 'r') mediaKey[i] = '\r';
+			else if (car0 == 't') mediaKey[i] = '\t';
+			else if (car0 == 'v') mediaKey[i] = '\v';
+			else if (car0 == 'f') mediaKey[i] = '\f';
+			else if (car0 == 'n') mediaKey[i] = '\n';
+			else if (car0 == '0') mediaKey[i] = '\0';
+			else {
 				printf("decryptfile: fatal: unknown escape sequence \\%c when decoding mediaKeyInput\n", car0);
 				return 2;
 			}
@@ -115,7 +220,7 @@ int main() {
 	// Getting data
 	FILE* infile = fopen(inFileName, "rb");
 	if (infile == 0) {
-		printf("decryptfile: fatal: failed opening input file with errno %d\n", errno);
+		printf("decryptfile: fatal: failed opening %s with errno %d\n", inFileName, errno);
 		return 3;
 	}
 	fseek(infile, 0, SEEK_END);
